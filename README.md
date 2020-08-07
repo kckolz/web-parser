@@ -1,8 +1,8 @@
-## Python Example Scripts
+## User Import - Newark
 
 This is a collection of Python scripts that can be used to import users with the Whetstone API. In order to use
 these scripts you must have Python installed on your machine. You can verify if you have Python installed by
-running `python --version` in a terminal window. You should see the version of node installed e.g., `Python 3.7.7`. 
+running `python --version` in a terminal window. You should see the version of python installed e.g., `Python 3.7.7`. 
 Once you have verified python is installed, run `pipenv install` from the python directory to install dependencies.
 Finally, you must update the config file with your Whetstone client credentials. Once the config file is updated, 
 you can execute the user import by running `python import.py`.
