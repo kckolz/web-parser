@@ -1,7 +1,6 @@
 import requests
 import base64
 import pandas
-import math
 from config import CLIENT_ID, CLIENT_SECRET, BASE_URL
 
 

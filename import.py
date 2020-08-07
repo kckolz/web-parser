@@ -1,4 +1,3 @@
-import math
 from api import ImportAPI
 from utils import ImportUtils
 
@@ -72,8 +71,8 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
                 updated_user = api.update_user(existing_user['_id'], user_data)
                 updated_users.append(updated_user)
         except Exception as exception:
-            warning_messages.append("Error creating/updating user: {0}".format(exception))
-            print("Error creating/updating user: {0}".format(exception))
+            warning_messages.append(f"Error creating/updating user [{user_data['name']}]: {exception}")
+            print(f"Error creating/updating user [{user_data['name']}]: {exception}")
     return updated_users
 
 def remove_users_from_groups(schools, locked_users):
@@ -97,7 +96,7 @@ def remove_users_from_groups(schools, locked_users):
                         del(school['observationGroups'][i])
                 except Exception as exception:
                     print("Error removing users from group: {0}".format(exception))
-                    warning_messages.append(f'Error removing users from group: {school["observationGroups"][i].name} at school: {school.name}')
+                    warning_messages.append(f'Error removing users from group: {school["observationGroups"][i]["name"]} at school: {school["name"]}')
 
             try:
                 for i in range(len(school['admins']) - 1, -1, -1):
@@ -114,7 +113,7 @@ def remove_users_from_groups(schools, locked_users):
                         del(school['nonInstructionalAdmins'][i])
             except Exception as exception:
                 print("Error removing admins from school: {0}".format(exception))
-                warning_messages.append(f'Error removing admins from school: {school.name}')
+                warning_messages.append(f'Error removing admins from school: {school["name"]}')
 
             api.update_school(school['_id'], school)
 
@@ -135,8 +134,8 @@ def add_users_to_groups(users_to_import, updated_users, schools):
             user_obj = ImportUtils.find_object(str(user_id), 'internalId', updated_users)
             user_school = ImportUtils.find_object(user['Location Descr'], 'name', schools)
             if user_school is None:
-                print(f'User {user["Email"]} is missing a school. Skipping school position.')
-                warning_messages.append(f'User {user["Email"]} is missing a school.')
+                print(f'User {user["Email"]} is missing a school or school does not exist. Skipping school position.')
+                warning_messages.append(f'User {user["Email"]} is missing a school or school does not exist.')
                 continue
             else:
                 ImportUtils.add_user_to_school_position(user, user_obj['_id'], user_school)
@@ -144,18 +143,18 @@ def add_users_to_groups(users_to_import, updated_users, schools):
             api.update_school(user_school['_id'], user_school)
         except Exception as exception:
             print("Error adding user to school position: {0}".format(exception))
-            warning_messages.append(f'Error adding user {user.name} to school position')
+            warning_messages.append(f'Error adding user {user["Email"]} to school position')
 
 
 def complete_import():
     if len(warning_messages):
-        message = "<p>There was a successful import but the following events occurred:</p><ul>"
+        messages = ["<p>There was a successful import but the following events occurred:</p><ul>"]
         for message in warning_messages:
-            message += f'<li>{message}</li>'
-        message += '</ul>'
+            messages.append(f'<li>{message}</li>')
+        messages.append('</ul>')
     else:
-        message = '<p>The user import completed successfully.</p>'
-    email_content = ImportUtils.get_email_message(message)
+        messages = ['<p>The user import completed successfully.</p>']
+    email_content = ImportUtils.get_email_message(''.join(messages))
     send_email(email_content)
 
 
