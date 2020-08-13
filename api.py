@@ -91,7 +91,7 @@ class ImportAPI:
             response_json = response.json()
             return response_json
         else:
-            raise Exception('Failed to get user types')
+            raise Exception('Failed to get user tags')
 
     def create_user(self, user):
         response = requests.post(

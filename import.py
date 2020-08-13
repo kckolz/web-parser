@@ -23,20 +23,21 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
     for user_to_import in users_to_import:
         # Check that the user has an employee ID, if not we skip this user
         if user_to_import['Emplid'] is None:
-            print(f'Error importing user {user_to_import["First Name"]} { user_to_import["Last Name"]}: Invalid Employee ID')
-            warning_messages.append(f'Invalid Employee ID for {user_to_import["First Name"]} { user_to_import["Last Name"]}')
-            continue
+            email = user_to_import['Email']
+            if email:
+                print(f'Error importing user {email}: Invalid Employee ID')
+                warning_messages.append(f'Invalid Employee ID for {email}')
+                continue
 
         # get basic user info from import
-        internal_id = user_to_import['Emplid']
+        internal_id = int(user_to_import['Emplid'])
         email = user_to_import['Email']
         first_name = user_to_import['First Name']
         last_name = user_to_import['Last Name']
         school = ImportUtils.find_object(user_to_import['Location Descr'], 'name', schools)
         user_type = ImportUtils.find_string(user_to_import['Jobcode Descr'], user_types)
         user_tag_1 = ImportUtils.find_string(user_to_import['19-20 Rating'], user_tags['userTag1s'])
-        # TODO: Add Tenure as user tag 2
-        # user_tag_2 = ImportUtils.find_string(user_to_import['Tenure'], user_tags['userTag2s'])
+        user_tag_2 = ImportUtils.find_string(user_to_import['Tenure Status'], user_tags['userTag2s'])
         user_tag_3 = ImportUtils.find_string(user_to_import['Framework'], user_tags['userTag3s'])
         user_tag_4 = ImportUtils.find_string(user_to_import['Dept Descr'], user_tags['userTag4s'])
 
@@ -62,6 +63,7 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
         try:
             existing_user = ImportUtils.find_object(str(internal_id), 'internalId', existing_users)
             if existing_user is None:
+                # Check if a user exists with the same email before attempting create
                 print(f'User {email} does not exist. Creating new Whetstone user')
                 new_user = api.create_user(user_data)
                 existing_users.append(new_user)

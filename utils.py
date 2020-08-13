@@ -101,7 +101,7 @@ class ImportUtils:
         if len(locked_users):
             locked_obj = map(lambda user: user.internalId, locked_users)
             locked_user_ids = list(locked_obj)
-            filter_obj = filter(lambda user: user['Emplid'] not in locked_user_ids, users_to_import)
+            filter_obj = filter(lambda user: 'Emplid' in user and user['Emplid'] not in locked_user_ids, users_to_import)
             filtered_list = list(filter_obj)
             return filtered_list
         else:
