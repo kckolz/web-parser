@@ -99,7 +99,14 @@ class ImportUtils:
     @staticmethod
     def filter_locked_users_from_import(users_to_import, locked_users):
         if len(locked_users):
-            locked_obj = map(lambda user: user.internalId, locked_users)
+            def get_id(user):
+                # Make sure the user has an internal ID and its not blank
+                if 'internalId' in user and user['internalId']:
+                    # Return the ID as a number
+                    return int(user['internalId'])
+                else:
+                    return 0
+            locked_obj = map(lambda user: get_id(user), locked_users)
             locked_user_ids = list(locked_obj)
             filter_obj = filter(lambda user: 'Emplid' in user and user['Emplid'] not in locked_user_ids, users_to_import)
             filtered_list = list(filter_obj)
