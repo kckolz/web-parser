@@ -131,7 +131,8 @@ class ImportUtils:
             not_multi_district = len(user['districts']) < 2
             not_archived = 'archivedAt' in user and user['archivedAt'] is None
             not_in_import = 'internalId' in user and user['internalId'] is not None and user['internalId'] not in user_ids
-            return not_multi_district and not_archived and not_in_import
+            not_locked = 'locked' in user and user['locked'] is not True or 'locked' not in user
+            return not_multi_district and not_archived and not_in_import and not_locked
         missing_users = list(filter(lambda user: user_missing(user), existing_users))
         for missing_user in missing_users:
             print(f'Archiving User {missing_user["name"]}')
