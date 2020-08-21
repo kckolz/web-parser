@@ -57,11 +57,6 @@ class ImportUtils:
                   <td>{body}</td>
               </tr>
             </tbody>
-            <tfoot>
-              <tr>
-                <td><img src='https://whetstone-static-assets.s3.amazonaws.com/images/logo-black-dk-green.png' style='height: auto; width: auto; max-width: 400px;'/></td>
-              </tr>
-            </tfoot>
           </table>
         </html>
         """
