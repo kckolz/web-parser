@@ -143,7 +143,7 @@ class ImportUtils:
     def create_default_groups(school):
         if 'observationGroups' not in school:
             school['observationGroups'] = []
-        group_names = list(map(lambda group: group.name, school['observationGroups']))
+        group_names = list(map(lambda group: group['name'], school['observationGroups']))
         if 'Non-Instructional Staff' not in group_names:
             school['observationGroups'].append({
                 'name': 'Non-Instructional Staff',

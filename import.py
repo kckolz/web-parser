@@ -84,18 +84,19 @@ def remove_users_from_groups(schools, locked_users):
         if 'observationGroups' in school:
             for i in range(len(school['observationGroups']) - 1, -1, -1):
                 try:
-                    locked_observees = ImportUtils.get_locked_group_members(school['observationGroups'][i], 'observees', locked_user_ids)
-                    locked_observers = ImportUtils.get_locked_group_members(school['observationGroups'][i], 'observers', locked_user_ids)
-                    if len(locked_observees) or len(locked_observers):
-                        if len(locked_observees):
-                            print(f'{len(locked_observers)} locked observees found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
-                            school['observationGroups'][i].observees = list(filter(lambda user: user not in locked_user_ids, school.observationGroups[i].observees))
-                        if len(locked_observers):
-                            print(f'{len(locked_observers)} locked observers found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
-                            school['observationGroups'][i].observers = list(filter(lambda user: user not in locked_user_ids, school.observationGroups[i].observers))
-                    else:
-                        print(f'No locked users found in group {school["observationGroups"][i]["name"]}. Removing group')
-                        del(school['observationGroups'][i])
+                    if school['observationGroups'][i]:
+                        locked_observees = ImportUtils.get_locked_group_members(school['observationGroups'][i], 'observees', locked_user_ids)
+                        locked_observers = ImportUtils.get_locked_group_members(school['observationGroups'][i], 'observers', locked_user_ids)
+                        if len(locked_observees) or len(locked_observers):
+                            if len(locked_observees):
+                                print(f'{len(locked_observees)} locked observees found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
+                                school['observationGroups'][i]['observees'] = list(filter(lambda user: user not in locked_user_ids, school["observationGroups"][i]['observees']))
+                            if len(locked_observers):
+                                print(f'{len(locked_observers)} locked observers found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
+                                school['observationGroups'][i]['observers'] = list(filter(lambda user: user not in locked_user_ids, school["observationGroups"][i]['observers']))
+                        else:
+                            print(f'No locked users found in group {school["observationGroups"][i]["name"]}. Removing group')
+                            del(school['observationGroups'][i])
                 except Exception as exception:
                     print("Error removing users from group: {0}".format(exception))
                     warning_messages.append(f'Error removing users from group: {school["observationGroups"][i]["name"]} at school: {school["name"]}')
