@@ -9,7 +9,7 @@ def archive_users(users_to_import, existing_users):
     try:
         # get users who exist in Whetstone but aren't in the current import
         users_to_archive = ImportUtils.get_users_to_archive(users_to_import, existing_users)
-        if len(users_to_archive):
+        if users_to_archive:
             # archive the users who are missing from the import
             api.archive_users(users_to_archive)
     except Exception as exception:
@@ -88,13 +88,13 @@ def remove_users_from_groups(schools, locked_users):
                     if school['observationGroups'][i]:
                         locked_observees = ImportUtils.get_locked_group_members(school['observationGroups'][i], 'observees', locked_user_ids)
                         locked_observers = ImportUtils.get_locked_group_members(school['observationGroups'][i], 'observers', locked_user_ids)
-                        if len(locked_observees) or len(locked_observers):
-                            if len(locked_observees):
+                        if locked_observees or locked_observers:
+                            if locked_observees:
                                 print(f'{len(locked_observees)} locked observees found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
-                                school['observationGroups'][i]['observees'] = list(filter(lambda user: user not in locked_user_ids, school["observationGroups"][i]['observees']))
-                            if len(locked_observers):
+                                school['observationGroups'][i]['observees'] = list(filter(lambda user: user in locked_user_ids, school["observationGroups"][i]['observees']))
+                            if locked_observers:
                                 print(f'{len(locked_observers)} locked observers found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
-                                school['observationGroups'][i]['observers'] = list(filter(lambda user: user not in locked_user_ids, school["observationGroups"][i]['observers']))
+                                school['observationGroups'][i]['observers'] = list(filter(lambda user: user in locked_user_ids, school["observationGroups"][i]['observers']))
                         else:
                             print(f'No locked users found in group {school["observationGroups"][i]["name"]}. Removing group')
                             del(school['observationGroups'][i])
@@ -107,14 +107,20 @@ def remove_users_from_groups(schools, locked_users):
                     if school['admins'][i] not in locked_user_ids:
                         print(f'Removing admin {school["admins"][i]} from admin group at {school["name"]}')
                         del(school['admins'][i])
+                    else:
+                        print(f'Admin {school["admins"][i]} from admin group at {school["name"]} is locked and will not be removed')
                 for i in range(len(school['assistantAdmins']) - 1, -1, -1):
                     if school['assistantAdmins'][i] not in locked_user_ids:
                         print(f'Removing assistant admin {school["assistantAdmins"][i]} from admin group at {school["name"]}')
                         del(school['assistantAdmins'][i])
+                    else:
+                        print(f'Assistant admin {school["assistantAdmins"][i]} from admin group at {school["name"]} is locked and will not be removed')
                 for i in range(len(school['nonInstructionalAdmins']) - 1, -1, -1):
                     if school['nonInstructionalAdmins'][i] not in locked_user_ids:
                         print(f'Removing non-instructional admin {school["nonInstructionalAdmins"][i]} from admin group at {school["name"]}')
                         del(school['nonInstructionalAdmins'][i])
+                    else:
+                        print(f'Non-instructional admin {school["nonInstructionalAdmins"][i]} from admin group at {school["name"]} is locked and will not be removed')
             except Exception as exception:
                 print("Error removing admins from school: {0}".format(exception))
                 warning_messages.append(f'Error removing admins from school: {school["name"]}')
@@ -151,7 +157,7 @@ def add_users_to_groups(users_to_import, updated_users, schools):
 
 
 def complete_import():
-    if len(warning_messages):
+    if warning_messages:
         messages = ["<p>There was a successful import but the following events occurred:</p><ul>"]
         for message in warning_messages:
             messages.append(f'<li>{message}</li>')

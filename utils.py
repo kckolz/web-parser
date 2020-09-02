@@ -112,7 +112,7 @@ class ImportUtils:
     @staticmethod
     def get_locked_group_members(group, role, locked_user_ids):
         group_members = group[role]
-        if len(group_members):
+        if group_members:
             return list(filter(lambda user: user in locked_user_ids, group_members))
         else:
             return []
