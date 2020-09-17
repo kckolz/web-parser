@@ -62,8 +62,8 @@ class ImportUtils:
         """
 
     @staticmethod
-    def get_whetstone_roles(role_to_convert, roles):
-        # TODO: Figure out Director/Supervisor
+    def get_whetstone_roles(role_to_convert, user_type, roles):
+        whetstone_roles = []
         role_map = {
             "0": ["Teacher"],
             "#N/A": ["Teacher"],
@@ -80,13 +80,20 @@ class ImportUtils:
             "Student Support Framework": ["Teacher"],
             "Unaffiliated": ["Teacher"]
         }
+
         # if the role to convert isn't a string we default them to teacher
         if not isinstance(role_to_convert, str):
             role_to_convert = "#N/A"
         whetstone_role_names = role_map[role_to_convert]
-        whetstone_roles = []
+
         for whetstone_role_name in whetstone_role_names:
             whetstone_roles.append(ImportUtils.find_object(whetstone_role_name, 'name', roles))
+
+        # Check User Type for one of the Department Chair job titles, if it exists the user get department chair role
+        department_chair_job_titles = ["D/C English", "D/C Math", "D/C Science", "D/C Social Studies", "D/C Health/Physical Education", "D/C Visual and Performing Arts", "D/C Bilingual", "D/C Special Education"]
+        if user_type in department_chair_job_titles:
+            whetstone_roles.append(ImportUtils.find_object("Department Chair", 'name', roles))
+
         if len(whetstone_roles):
             whetstone_roles = list(map(lambda role: role['_id'], whetstone_roles))
         return whetstone_roles
