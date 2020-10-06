@@ -47,6 +47,7 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
             'last': last_name,
             'name': first_name + ' ' + last_name,
             'internalId': internal_id,
+            'archivedAt': None,
             'email': email,
             'defaultInformation': {
                 'school': school['_id'] if school is not None else None
@@ -91,10 +92,16 @@ def remove_users_from_groups(schools, locked_users):
                         if locked_observees or locked_observers:
                             if locked_observees:
                                 print(f'{len(locked_observees)} locked observees found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
-                                school['observationGroups'][i]['observees'] = list(filter(lambda user: user in locked_user_ids, school["observationGroups"][i]['observees']))
+                                school['observationGroups'][i]['observees'] = locked_observees
+                            else:
+                                print(f'No locked observees found in group {school["observationGroups"][i]["name"]}. Removing observees')
+                                school['observationGroups'][i]['observees'] = []
                             if locked_observers:
                                 print(f'{len(locked_observers)} locked observers found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
-                                school['observationGroups'][i]['observers'] = list(filter(lambda user: user in locked_user_ids, school["observationGroups"][i]['observers']))
+                                school['observationGroups'][i]['observers'] = locked_observers
+                            else:
+                                print(f'No locked observers found in group {school["observationGroups"][i]["name"]}. Removing observers')
+                                school['observationGroups'][i]['observers'] = []
                         else:
                             print(f'No locked users found in group {school["observationGroups"][i]["name"]}. Removing group')
                             del(school['observationGroups'][i])
@@ -143,14 +150,26 @@ def add_users_to_groups(users_to_import, updated_users, schools):
             user_id = user['Emplid']
             user_obj = ImportUtils.find_object(str(user_id), 'internalId', updated_users)
             user_school = ImportUtils.find_object(user['Location Descr'], 'name', schools)
-            if user_school is None:
-                print(f'User {user["Email"]} is missing a school or school does not exist. Skipping school position.')
-                warning_messages.append(f'User {user["Email"]} is missing a school or school does not exist.')
-                continue
-            else:
-                ImportUtils.add_user_to_school_position(user, user_obj['_id'], user_school)
 
-            api.update_school(user_school['_id'], user_school)
+            if user_obj:
+                if user_school is None:
+                    print(f'User {user["Email"]} is missing a school or school does not exist. Skipping school position.')
+                    warning_messages.append(f'User {user["Email"]} is missing a school or school does not exist.')
+                    continue
+                else:
+                    # Create special coaching groups for users with coaches listed in the import
+                    if 'Coach' in user and user['Coach'] and user['Framework'] in {'Unaffiliated', 'Director/Supervisor'}:
+                        coach = ImportUtils.find_object(user['Coach'], 'internalId', updated_users)
+                        if coach:
+                            ImportUtils.create_special_coaching_group(user_obj, coach, user_school)
+
+                    # Add users to the standard coaching groups
+                    ImportUtils.add_user_to_school_position(user, user_obj['_id'], user_school)
+                    api.update_school(user_school['_id'], user_school)
+            else:
+                print(f'Error adding user {user["Email"]} to school position. User not found')
+                warning_messages.append(f'Error adding user {user["Email"]} to school position. User not found')
+
         except Exception as exception:
             print("Error adding user to school position: {0}".format(exception))
             warning_messages.append(f'Error adding user {user["Email"]} to school position')

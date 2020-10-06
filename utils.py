@@ -126,12 +126,11 @@ class ImportUtils:
 
     @staticmethod
     def get_users_to_archive(users_to_import, existing_users):
-        user_id_obj = map(lambda user: user["Emplid"], users_to_import)
-        user_ids = list(user_id_obj)
+        user_ids = list(map(lambda user: user["Emplid"], users_to_import))
 
         def user_missing(user):
             not_multi_district = len(user['districts']) < 2
-            not_archived = 'archivedAt' in user and user['archivedAt'] is None
+            not_archived = 'archivedAt' in user and user['archivedAt'] is None or 'archivedAt' not in user
             not_in_import = 'internalId' in user and user['internalId'] is not None and user['internalId'] not in user_ids
             not_locked = 'locked' in user and user['locked'] is not True or 'locked' not in user
             return not_multi_district and not_archived and not_in_import and not_locked
@@ -176,6 +175,19 @@ class ImportUtils:
             school['assistantAdmins'].append(user_id)
         if user_role == 'NPS Principal Framework':
             school['admins'].append(user_id)
+
+    @staticmethod
+    def create_special_coaching_group(user, coach, school):
+        group_names = list(map(lambda group: group['name'], school['observationGroups']))
+        if f"{coach['name']}'s Group" not in group_names:
+            school['observationGroups'].append({
+                'name': f"{coach['name']}'s Group",
+                'observers': [coach['_id']],
+                'observees': [user['_id']]
+            })
+        else:
+            coach_group = ImportUtils.find_object(f"{coach['name']}'s Group", 'name', school['observationGroups'])
+            coach_group['observees'].append(user['_id'])
 
     @staticmethod
     def add_practice_user_to_school(practice_user, school):
