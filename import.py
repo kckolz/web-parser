@@ -55,7 +55,7 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
             'coach': None,
             'usertype': user_type['_id'] if user_type is not None else None,
             'districts': [district['_id']],
-            'roles': ImportUtils.get_whetstone_roles(user_to_import['Framework'], user_type, roles) or [],
+            'roles': ImportUtils.get_whetstone_roles(user_to_import['Framework'], user_type['name'], roles) or [],
             'usertag1': user_tag_1['_id'] if user_tag_1 is not None else None,
             'usertag2': user_tag_2['_id'] if user_tag_2 is not None else None,
             'usertag3': user_tag_3['_id'] if user_tag_3 is not None else None,
