@@ -85,6 +85,8 @@ class ImportUtils:
         if not isinstance(role_to_convert, str):
             role_to_convert = "#N/A"
         whetstone_role_names = role_map[role_to_convert]
+        if not whetstone_role_names:
+            whetstone_role_names = ["Teacher"]
 
         for whetstone_role_name in whetstone_role_names:
             whetstone_roles.append(ImportUtils.find_object(whetstone_role_name, 'name', roles))
@@ -131,7 +133,7 @@ class ImportUtils:
         def user_missing(user):
             not_multi_district = len(user['districts']) < 2
             not_archived = 'archivedAt' in user and user['archivedAt'] is None or 'archivedAt' not in user
-            not_in_import = 'internalId' in user and user['internalId'] is not None and user['internalId'] not in user_ids
+            not_in_import = 'internalId' in user and not user['internalId'] and user['internalId'] not in user_ids
             not_locked = 'locked' in user and user['locked'] is not True or 'locked' not in user
             return not_multi_district and not_archived and not_in_import and not_locked
         missing_users = list(filter(lambda user: user_missing(user), existing_users))
