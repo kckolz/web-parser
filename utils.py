@@ -6,6 +6,8 @@ from config import CLIENT_ID, CLIENT_SECRET, BASE_URL
 
 class ImportUtils:
 
+    department_chair_job_titles = ["D/C English", "D/C Math", "D/C Science", "D/C Social Studies", "D/C Health/Physical Education", "D/C Visual and Performing Arts", "D/C Bilingual", "D/C Special Education"]
+
     @staticmethod
     def authorize():
         client_id = CLIENT_ID
@@ -92,8 +94,7 @@ class ImportUtils:
             whetstone_roles.append(ImportUtils.find_object(whetstone_role_name, 'name', roles))
 
         # Check User Type for one of the Department Chair job titles, if it exists the user get department chair role
-        department_chair_job_titles = ["D/C English", "D/C Math", "D/C Science", "D/C Social Studies", "D/C Health/Physical Education", "D/C Visual and Performing Arts", "D/C Bilingual", "D/C Special Education"]
-        if user_type in department_chair_job_titles:
+        if user_type in ImportUtils.department_chair_job_titles:
             whetstone_roles.append(ImportUtils.find_object("Department Chair", 'name', roles))
 
         if len(whetstone_roles):
@@ -128,12 +129,12 @@ class ImportUtils:
 
     @staticmethod
     def get_users_to_archive(users_to_import, existing_users):
-        user_ids = list(map(lambda user: user["Emplid"], users_to_import))
+        user_ids = list(map(lambda user: str(user["Emplid"]), users_to_import))
 
         def user_missing(user):
             not_multi_district = len(user['districts']) < 2
             not_archived = 'archivedAt' in user and user['archivedAt'] is None or 'archivedAt' not in user
-            not_in_import = 'internalId' in user and not user['internalId'] and user['internalId'] not in user_ids
+            not_in_import = 'internalId' in user and user['internalId'] and user['internalId'] not in user_ids
             not_locked = 'locked' in user and user['locked'] is not True or 'locked' not in user
             return not_multi_district and not_archived and not_in_import and not_locked
         missing_users = list(filter(lambda user: user_missing(user), existing_users))
@@ -177,6 +178,10 @@ class ImportUtils:
             school['assistantAdmins'].append(user_id)
         if user_role == 'NPS Principal Framework':
             school['admins'].append(user_id)
+
+        # Check User Type for one of the Department Chair job titles, if it exists the user get department chair role
+        if user['Jobcode Descr'] in ImportUtils.department_chair_job_titles:
+            school['nonInstructionalAdmins'].append(user_id)
 
     @staticmethod
     def create_special_coaching_group(user, coach, school):
