@@ -1,5 +1,6 @@
 from api import ImportAPI
 from utils import ImportUtils
+import math
 
 warning_messages = []
 
@@ -40,6 +41,11 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
         user_tag_2 = ImportUtils.find_object(user_to_import['Tenure Status'], 'name', user_tags['userTag2s'])
         user_tag_3 = ImportUtils.find_object(user_to_import['Framework'], 'name', user_tags['userTag3s'])
         user_tag_4 = ImportUtils.find_object(user_to_import['Dept Descr'], 'name', user_tags['userTag4s'])
+        coach = None
+        if 'Coach' in user_to_import and user_to_import['Coach'] and not math.isnan(user_to_import['Coach']):
+            existing_coach = ImportUtils.find_object(str(int(user_to_import['Coach'])), 'internalId', existing_users)
+            if existing_coach:
+                coach = existing_coach['_id']
 
         # build user object
         user_data = {
@@ -52,10 +58,10 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
             'defaultInformation': {
                 'school': school['_id'] if school is not None else None
             },
-            'coach': None,
+            'coach': coach,
             'usertype': user_type['_id'] if user_type is not None else None,
             'districts': [district['_id']],
-            'roles': ImportUtils.get_whetstone_roles(user_to_import['Framework'], user_type['name'], roles) or [],
+            'roles': ImportUtils.get_whetstone_roles(user_to_import['Framework'], user_type, roles) or [],
             'usertag1': user_tag_1['_id'] if user_tag_1 is not None else None,
             'usertag2': user_tag_2['_id'] if user_tag_2 is not None else None,
             'usertag3': user_tag_3['_id'] if user_tag_3 is not None else None,
@@ -158,8 +164,8 @@ def add_users_to_groups(users_to_import, updated_users, schools):
                     continue
                 else:
                     # Create special coaching groups for users with coaches listed in the import
-                    if 'Coach' in user and user['Coach'] and user['Framework'] in {'Unaffiliated', 'Director/Supervisor'}:
-                        coach = ImportUtils.find_object(user['Coach'], 'internalId', updated_users)
+                    if 'Coach' in user and user['Coach'] and not math.isnan(user['Coach']) and user['Framework'] in {'Unaffiliated', 'Director/Supervisor'}:
+                        coach = ImportUtils.find_object(str(int(user['Coach'])), 'internalId', updated_users)
                         if coach:
                             ImportUtils.create_special_coaching_group(user_obj, coach, user_school)
 

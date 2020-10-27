@@ -36,7 +36,7 @@ class ImportUtils:
 
     @staticmethod
     def get_csv_users(locked_users):
-        users = pandas.read_csv('newark-users.csv')
+        users = pandas.read_csv('newark-users.csv', engine='python')
         if not users.empty:
             users = users.to_dict('records')
             non_locked_users = ImportUtils.filter_locked_users_from_import(users, locked_users)
@@ -94,7 +94,7 @@ class ImportUtils:
             whetstone_roles.append(ImportUtils.find_object(whetstone_role_name, 'name', roles))
 
         # Check User Type for one of the Department Chair job titles, if it exists the user get department chair role
-        if user_type in ImportUtils.department_chair_job_titles:
+        if user_type and user_type['name'] in ImportUtils.department_chair_job_titles:
             whetstone_roles.append(ImportUtils.find_object("Department Chair", 'name', roles))
 
         if len(whetstone_roles):
