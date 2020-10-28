@@ -1,12 +1,14 @@
 from api import ImportAPI
 from utils import ImportUtils
 import math
+from datetime import datetime
 
 warning_messages = []
-
+log = open(f'user-import-{datetime.now()}.log', 'w')
 
 def archive_users(users_to_import, existing_users):
     print('Status: Archiving users missing from import')
+    log.write('Status: Archiving users missing from import\n')
     try:
         # get users who exist in Whetstone but aren't in the current import
         users_to_archive = ImportUtils.get_users_to_archive(users_to_import, existing_users)
@@ -16,10 +18,12 @@ def archive_users(users_to_import, existing_users):
     except Exception as exception:
         warning_messages.append("Error archiving users: {0}".format(exception))
         print("Error archiving users: {0}".format(exception))
+        log.write("Error archiving users: {0}\n".format(exception))
 
 
 def update_users(users_to_import, existing_users, schools, user_types, user_tags, roles, district):
     print('Status: Updating basic user information')
+    log.write('Status: Updating basic user information\n')
     updated_users = []
     for user_to_import in users_to_import:
         # Check that the user has an employee ID, if not we skip this user
@@ -27,6 +31,7 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
             email = user_to_import['Email']
             if email:
                 print(f'Error importing user {email}: Invalid Employee ID')
+                log.write(f'Error importing user {email}: Invalid Employee ID\n')
                 warning_messages.append(f'Invalid Employee ID for {email}')
                 continue
 
@@ -73,20 +78,36 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
             if existing_user is None:
                 # Check if a user exists with the same email before attempting create
                 print(f'User {email} does not exist. Creating new Whetstone user')
+                log.write(f'User {email} does not exist. Creating new Whetstone user\n')
                 new_user = api.create_user(user_data)
                 existing_users.append(new_user)
                 updated_users.append(new_user)
             else:
                 print(f'User {email} exists. Updating Whetstone user')
+                log.write(f'User {email} exists. Updating Whetstone user\n')
                 updated_user = api.update_user(existing_user['_id'], user_data)
                 updated_users.append(updated_user)
         except Exception as exception:
             warning_messages.append(f"Error creating/updating user [{user_data['name']}]: {exception}")
             print(f"Error creating/updating user [{user_data['name']}]: {exception}")
+            log.write(f"Error creating/updating user [{user_data['name']}]: {exception}\n")
     return updated_users
+
+def add_coach_roles(users_to_import, existing_users, roles):
+    for user_to_import in users_to_import:
+        if 'Coach' in user_to_import and user_to_import['Coach'] and not math.isnan(user_to_import['Coach']):
+            existing_coach = ImportUtils.find_object(str(int(user_to_import['Coach'])), 'internalId', existing_users)
+            if existing_coach:
+                coach_role = ImportUtils.find_object('Coach', 'name', roles)
+                if coach_role and coach_role['_id'] not in existing_coach['roles']:
+                    existing_coach['roles'].append(coach_role['_id'])
+                    print(f'Adding coach role to user {existing_coach["email"]}')
+                    log.write(f'Adding coach role to user {existing_coach["email"]}\n')
+                    api.update_user(existing_coach['_id'], existing_coach)
 
 def remove_users_from_groups(schools, locked_users):
     print('Status: Removing users from school-based groups')
+    log.write('Status: Removing users from school-based groups\n')
     locked_user_ids = list(map(lambda user: user['_id'], locked_users))
     for school in schools:
         if 'observationGroups' in school:
@@ -98,44 +119,57 @@ def remove_users_from_groups(schools, locked_users):
                         if locked_observees or locked_observers:
                             if locked_observees:
                                 print(f'{len(locked_observees)} locked observees found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
+                                log.write(f'{len(locked_observees)} locked observees found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members\n')
                                 school['observationGroups'][i]['observees'] = locked_observees
                             else:
                                 print(f'No locked observees found in group {school["observationGroups"][i]["name"]}. Removing observees')
+                                log.write(f'No locked observees found in group {school["observationGroups"][i]["name"]}. Removing observees\n')
                                 school['observationGroups'][i]['observees'] = []
                             if locked_observers:
                                 print(f'{len(locked_observers)} locked observers found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members')
+                                log.write(f'{len(locked_observers)} locked observers found in group {school["observationGroups"][i]["name"]}. Removing unlocked group members\n')
                                 school['observationGroups'][i]['observers'] = locked_observers
                             else:
                                 print(f'No locked observers found in group {school["observationGroups"][i]["name"]}. Removing observers')
+                                log.write(f'No locked observers found in group {school["observationGroups"][i]["name"]}. Removing observers\n')
                                 school['observationGroups'][i]['observers'] = []
                         else:
                             print(f'No locked users found in group {school["observationGroups"][i]["name"]}. Removing group')
+                            log.write(f'No locked users found in group {school["observationGroups"][i]["name"]}. Removing group\n')
                             del(school['observationGroups'][i])
                 except Exception as exception:
                     print("Error removing users from group: {0}".format(exception))
+                    log.write("Error removing users from group: {0}\n".format(exception))
                     warning_messages.append(f'Error removing users from group: {school["observationGroups"][i]["name"]} at school: {school["name"]}')
 
             try:
                 for i in range(len(school['admins']) - 1, -1, -1):
                     if school['admins'][i] not in locked_user_ids:
                         print(f'Removing admin {school["admins"][i]} from admin group at {school["name"]}')
+                        log.write(f'Removing admin {school["admins"][i]} from admin group at {school["name"]}\n')
                         del(school['admins'][i])
                     else:
                         print(f'Admin {school["admins"][i]} from admin group at {school["name"]} is locked and will not be removed')
+                        log.write(f'Admin {school["admins"][i]} from admin group at {school["name"]} is locked and will not be removed\n')
                 for i in range(len(school['assistantAdmins']) - 1, -1, -1):
                     if school['assistantAdmins'][i] not in locked_user_ids:
                         print(f'Removing assistant admin {school["assistantAdmins"][i]} from admin group at {school["name"]}')
+                        log.write(f'Removing assistant admin {school["assistantAdmins"][i]} from admin group at {school["name"]}\n')
                         del(school['assistantAdmins'][i])
                     else:
                         print(f'Assistant admin {school["assistantAdmins"][i]} from admin group at {school["name"]} is locked and will not be removed')
+                        log.write(f'Assistant admin {school["assistantAdmins"][i]} from admin group at {school["name"]} is locked and will not be removed\n')
                 for i in range(len(school['nonInstructionalAdmins']) - 1, -1, -1):
                     if school['nonInstructionalAdmins'][i] not in locked_user_ids:
                         print(f'Removing non-instructional admin {school["nonInstructionalAdmins"][i]} from admin group at {school["name"]}')
+                        log.write(f'Removing non-instructional admin {school["nonInstructionalAdmins"][i]} from admin group at {school["name"]}\n')
                         del(school['nonInstructionalAdmins'][i])
                     else:
                         print(f'Non-instructional admin {school["nonInstructionalAdmins"][i]} from admin group at {school["name"]} is locked and will not be removed')
+                        log.write(f'Non-instructional admin {school["nonInstructionalAdmins"][i]} from admin group at {school["name"]} is locked and will not be removed\n')
             except Exception as exception:
                 print("Error removing admins from school: {0}".format(exception))
+                log.write("Error removing admins from school: {0}\n".format(exception))
                 warning_messages.append(f'Error removing admins from school: {school["name"]}')
 
             api.update_school(school['_id'], school)
@@ -146,7 +180,7 @@ def remove_users_from_groups(schools, locked_users):
 
 def add_users_to_groups(users_to_import, updated_users, schools):
     print("Status: Adding users to school groups")
-
+    log.write("Status: Adding users to school groups\n")
     for school in schools:
         # Make sure the school has groups
         ImportUtils.create_default_groups(school)
@@ -160,24 +194,28 @@ def add_users_to_groups(users_to_import, updated_users, schools):
             if user_obj:
                 if user_school is None:
                     print(f'User {user["Email"]} is missing a school or school does not exist. Skipping school position.')
+                    log.write(f'User {user["Email"]} is missing a school or school does not exist. Skipping school position.\n')
                     warning_messages.append(f'User {user["Email"]} is missing a school or school does not exist.')
                     continue
                 else:
                     # Create special coaching groups for users with coaches listed in the import
-                    if 'Coach' in user and user['Coach'] and not math.isnan(user['Coach']) and user['Framework'] in {'Unaffiliated', 'Director/Supervisor'}:
+                    if 'Coach' in user and user['Coach'] and not math.isnan(user['Coach']) and user['Framework'] in {'Unaffiliated', 'Director / Supervisor'}:
                         coach = ImportUtils.find_object(str(int(user['Coach'])), 'internalId', updated_users)
                         if coach:
                             ImportUtils.create_special_coaching_group(user_obj, coach, user_school)
+                            # Give coach the coach role if they dont have it
 
                     # Add users to the standard coaching groups
                     ImportUtils.add_user_to_school_position(user, user_obj['_id'], user_school)
                     api.update_school(user_school['_id'], user_school)
             else:
                 print(f'Error adding user {user["Email"]} to school position. User not found')
+                log.write(f'Error adding user {user["Email"]} to school position. User not found\n')
                 warning_messages.append(f'Error adding user {user["Email"]} to school position. User not found')
 
         except Exception as exception:
             print("Error adding user to school position: {0}".format(exception))
+            log.write("Error adding user to school position: {0}\n".format(exception))
             warning_messages.append(f'Error adding user {user["Email"]} to school position')
 
 
@@ -240,6 +278,9 @@ try:
     # add / update users in import
     updated_users = update_users(users_to_import, existing_users, schools, user_types, user_tags, roles, district)
 
+    # add coach roles for any coaches listed in the import
+    add_coach_roles(users_to_import, existing_users, roles)
+
     # remove users from school groups
     schools = remove_users_from_groups(schools, locked_users)
 
@@ -251,6 +292,7 @@ try:
 
 except Exception as e:
     print("Error: {0}".format(e))
+    log.write("Error: {0}\n".format(e))
     warning_messages.append("Error: {0}".format(e))
     email_body = ImportUtils.get_email_message("An error occurred while importing users")
     send_email(email_body)
