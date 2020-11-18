@@ -7,6 +7,7 @@ from config import CLIENT_ID, CLIENT_SECRET, BASE_URL
 class ImportUtils:
 
     department_chair_job_titles = ["D/C English", "D/C Math", "D/C Science", "D/C Social Studies", "D/C Health/Physical Education", "D/C Visual and Performing Arts", "D/C Bilingual", "D/C Special Education"]
+    nps_director_job_titles = ["Director", "Director Bilingual", "Director Early Childhood", "Director Health and Phys Ed", "Director Mathematics", "Director of Attendance", "Director of Students 2 Science", "Director Social Studies", "Director Special Education", "Director Staff Development", "Director Student Support Serv", "Director Support Services", "Director Visual/Performing Art", "Exec Dir Fed Programs & Grants", "Exec Dir Off Erly Chdhood", "Executive Director", "Executive Director of IT", "Director of Enrollment", "Director -Student Information", "General Counsel", "Executive Controller"]
 
     @staticmethod
     def authorize():
@@ -67,20 +68,20 @@ class ImportUtils:
     def get_whetstone_roles(role_to_convert, user_type, roles):
         whetstone_roles = []
         role_map = {
-            "0": ["Teacher"],
-            "#N/A": ["Teacher"],
-            "Adult Support Framework": ["Teacher", "Coach"],
-            "CST Framework": ["Teacher"],
-            "Director / Supervisor": ["Teacher"],
-            "Framework for Effective Teaching": ["Teacher"],
-            "Non-instructional": ["Teacher"],
+            "0": ["Learner"],
+            "#N/A": ["Learner"],
+            "Adult Support Framework": ["Teacher Coach"],
+            "CST Framework": ["Learner"],
+            "Director / Supervisor": ["School Assistant Admin"],
+            "Framework for Effective Teaching": ["Learner"],
+            "Non-instructional": ["Learner"],
             "NPS non-Principal Leadership Framework": ["School Assistant Admin"],
-            "NPS Principal Framework": ["School Assistant Admin"],
-            "Nurse Framework": ["Teacher"],
-            "Paraprofessional": ["Teacher"],
-            "School-Wide Services Framework": ["Teacher"],
-            "Student Support Framework": ["Teacher"],
-            "Unaffiliated": ["Teacher"]
+            "NPS Principal Framework": ["School Admin"],
+            "Nurse Framework": ["Learner"],
+            "Paraprofessional": ["Learner"],
+            "School-Wide Services Framework": ["Learner"],
+            "Student Support Framework": ["Learner"],
+            "Unaffiliated": ["Learner"]
         }
 
         # if the role to convert isn't a string we default them to teacher
@@ -88,7 +89,7 @@ class ImportUtils:
             role_to_convert = "#N/A"
         whetstone_role_names = role_map[role_to_convert]
         if not whetstone_role_names:
-            whetstone_role_names = ["Teacher"]
+            whetstone_role_names = ["Learner"]
 
         for whetstone_role_name in whetstone_role_names:
             whetstone_roles.append(ImportUtils.find_object(whetstone_role_name, 'name', roles))
@@ -144,40 +145,53 @@ class ImportUtils:
         return missing_user_ids
 
     @staticmethod
+    def get_users_to_restore(users_to_import, existing_users):
+        user_ids = list(map(lambda user: str(user["Emplid"]), users_to_import))
+
+        def user_missing(user):
+            not_multi_district = len(user['districts']) < 2
+            is_archived = 'archivedAt' in user and user['archivedAt'] is not None
+            is_in_import = 'internalId' in user and user['internalId'] and user['internalId'] in user_ids
+            not_locked = 'locked' in user and user['locked'] is not True or 'locked' not in user
+            return not_multi_district and is_archived and is_in_import and not_locked
+        users_to_restore = list(filter(lambda user: user_missing(user), existing_users))
+        for restore_user in users_to_restore:
+            print(f'Restoring User {restore_user["name"]}')
+        restore_user_ids = list(map(lambda user: user["_id"], users_to_restore))
+        return restore_user_ids
+
+    @staticmethod
     def create_default_groups(school):
         if 'observationGroups' not in school:
             school['observationGroups'] = []
         group_names = list(map(lambda group: group['name'], school['observationGroups']))
-        if 'Non-Instructional Staff' not in group_names:
+        if 'Teachers' not in group_names:
             school['observationGroups'].append({
-                'name': 'Non-Instructional Staff',
-                'observers': [],
-                'observees': []
-            })
-        if 'Instructional Staff' not in group_names:
-            school['observationGroups'].append({
-                'name': 'Instructional Staff',
+                'name': 'Teachers',
                 'observers': [],
                 'observees': []
             })
 
     @staticmethod
     def add_user_to_school_position(user, user_id, school):
-        non_instructional_group = ImportUtils.find_object('Non-Instructional Staff', 'name', school['observationGroups'])
-        instructional_group = ImportUtils.find_object('Instructional Staff', 'name', school['observationGroups'])
+        teachers_group = ImportUtils.find_object('Teachers', 'name', school['observationGroups'])
         user_role = user['Framework']
-        # TODO: Figure out where Director/Supervisor goes
-        if user_role in {'0', '#N/A', 'CST Framework', 'Non-instructional', 'Nurse Framework', 'School-Wide Services', 'Student Support Framework', 'Unaffiliated'}:
-            non_instructional_group['observees'].append(user_id)
+        if user_role in {'Non-instructional',  'Unaffiliated'}:
+            teachers_group['observees'].append(user_id)
         if user_role == 'Adult Support Framework':
-            instructional_group['observees'].append(user_id)
-            instructional_group['observers'].append(user_id)
-        if user_role in {'Framework for Effective Teaching', 'Paraprofessional'}:
-            instructional_group['observees'].append(user_id)
-        if user_role == 'NPS non-Principal Leadership Framework':
+            teachers_group['observees'].append(user_id)
+        if user_role in {'0', '#N/A', 'CST Framework', 'Framework for Effective Teaching', 'Paraprofessional',
+                         'Nurse Framework', 'School-Wide Services', 'Student Support Framework'}:
+            teachers_group['observees'].append(user_id)
+        if user_role in {'NPS non-Principal Leadership Framework'}:
             school['assistantAdmins'].append(user_id)
         if user_role == 'NPS Principal Framework':
             school['admins'].append(user_id)
+        if user_role == 'Director / Supervisor':
+            if user['Jobcode Descr'] in ImportUtils.nps_director_job_titles:
+                school['admins'].append(user_id)
+            else:
+                school['assistantAdmins'].append(user_id)
 
         # Check User Type for one of the Department Chair job titles, if it exists the user get department chair role
         if user['Jobcode Descr'] in ImportUtils.department_chair_job_titles:
@@ -199,12 +213,9 @@ class ImportUtils:
     @staticmethod
     def add_practice_user_to_school(practice_user, school):
         practice_user_id = practice_user['_id']
-        non_instructional_group = ImportUtils.find_object('Non-Instructional Staff', 'name', school['observationGroups'])
-        instructional_group = ImportUtils.find_object('Instructional Staff', 'name', school['observationGroups'])
-        if ImportUtils.find_object(practice_user_id, 'observees', non_instructional_group) is None:
-            non_instructional_group.observees.append(practice_user_id)
-        if ImportUtils.find_object(practice_user_id, 'observees', instructional_group) is None:
-            instructional_group.observees.append(practice_user_id)
+        teachers_group = ImportUtils.find_object('Teachers', 'name', school['observationGroups'])
+        if ImportUtils.find_object(practice_user_id, 'observees', teachers_group) is None:
+            teachers_group.observees.append(practice_user_id)
 
     @staticmethod
     def find_string(element_to_find, list_to_search):

@@ -141,6 +141,18 @@ class ImportAPI:
         else:
             raise Exception('Failed to archive users')
 
+    def restore_users(self, users):
+        response = requests.put(
+            BASE_URL + '/import/users/restore',
+            headers=self.get_headers(),
+            json=users
+        )
+        if response.status_code == 200:
+            response_json = response.json()
+            return response_json
+        else:
+            raise Exception('Failed to restore users')
+
     def update_school(self, update_school_id, fields_to_update):
         response = requests.put(
             BASE_URL + '/import/schools/' + update_school_id,

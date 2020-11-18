@@ -20,6 +20,20 @@ def archive_users(users_to_import, existing_users):
         print("Error archiving users: {0}".format(exception))
         log.write("Error archiving users: {0}\n".format(exception))
 
+def restore_users(users_to_import, existing_users):
+    print('Status: Restoring archived users')
+    log.write('Status: Archiving users missing from import\n')
+    try:
+        # get users who are archived in Whetstone and present in the current import
+        users_to_restore = ImportUtils.get_users_to_restore(users_to_import, existing_users)
+        if users_to_restore:
+            # restore the users who are archived
+            api.restore_users(users_to_restore)
+    except Exception as exception:
+        warning_messages.append("Error restoring users: {0}".format(exception))
+        print("Error restoring users: {0}".format(exception))
+        log.write("Error restoring users: {0}\n".format(exception))
+
 
 def update_users(users_to_import, existing_users, schools, user_types, user_tags, roles, district):
     print('Status: Updating basic user information')
@@ -274,6 +288,9 @@ try:
 
     # archive users
     archive_users(users_to_import, existing_users)
+
+    # restore users
+    restore_users(users_to_import, existing_users)
 
     # add / update users in import
     updated_users = update_users(users_to_import, existing_users, schools, user_types, user_tags, roles, district)
