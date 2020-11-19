@@ -4,7 +4,7 @@ import math
 from datetime import datetime
 
 warning_messages = []
-log = open(f'user-import-{datetime.now()}.log', 'w')
+log = open(f'logs/user-import-{datetime.now()}.log', 'w')
 
 def archive_users(users_to_import, existing_users):
     print('Status: Archiving users missing from import')
@@ -19,6 +19,20 @@ def archive_users(users_to_import, existing_users):
         warning_messages.append("Error archiving users: {0}".format(exception))
         print("Error archiving users: {0}".format(exception))
         log.write("Error archiving users: {0}\n".format(exception))
+
+def restore_users(users_to_import, existing_users):
+    print('Status: Restoring archived users')
+    log.write('Status: Archiving users missing from import\n')
+    try:
+        # get users who are archived in Whetstone and present in the current import
+        users_to_restore = ImportUtils.get_users_to_restore(users_to_import, existing_users)
+        if users_to_restore:
+            # restore the users who are archived
+            api.restore_users(users_to_restore)
+    except Exception as exception:
+        warning_messages.append("Error restoring users: {0}".format(exception))
+        print("Error restoring users: {0}".format(exception))
+        log.write("Error restoring users: {0}\n".format(exception))
 
 
 def update_users(users_to_import, existing_users, schools, user_types, user_tags, roles, district):
@@ -47,10 +61,10 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
         user_tag_3 = ImportUtils.find_object(user_to_import['Framework'], 'name', user_tags['userTag3s'])
         user_tag_4 = ImportUtils.find_object(user_to_import['Dept Descr'], 'name', user_tags['userTag4s'])
         coach = None
-        if 'Coach' in user_to_import and user_to_import['Coach'] and not math.isnan(user_to_import['Coach']):
-            existing_coach = ImportUtils.find_object(str(int(user_to_import['Coach'])), 'internalId', existing_users)
-            if existing_coach:
-                coach = existing_coach['_id']
+        # if 'Coach' in user_to_import and user_to_import['Coach'] and not math.isnan(user_to_import['Coach']):
+        #     existing_coach = ImportUtils.find_object(str(int(user_to_import['Coach'])), 'internalId', existing_users)
+        #     if existing_coach:
+        #         coach = existing_coach['_id']
 
         # build user object
         user_data = {
@@ -274,6 +288,9 @@ try:
 
     # archive users
     archive_users(users_to_import, existing_users)
+
+    # restore users
+    restore_users(users_to_import, existing_users)
 
     # add / update users in import
     updated_users = update_users(users_to_import, existing_users, schools, user_types, user_tags, roles, district)
