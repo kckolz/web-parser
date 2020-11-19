@@ -37,7 +37,7 @@ class ImportUtils:
 
     @staticmethod
     def get_csv_users(locked_users):
-        users = pandas.read_csv('newark-users.csv', engine='python')
+        users = pandas.read_csv('newark-users.csv', delimiter=',')
         if not users.empty:
             users = users.to_dict('records')
             non_locked_users = ImportUtils.filter_locked_users_from_import(users, locked_users)
@@ -67,15 +67,14 @@ class ImportUtils:
     @staticmethod
     def get_whetstone_roles(role_to_convert, user_type, roles):
         whetstone_roles = []
+        whetstone_role_names = []
         role_map = {
             "0": ["Learner"],
             "#N/A": ["Learner"],
             "Adult Support Framework": ["Teacher Coach"],
             "CST Framework": ["Learner"],
-            "Director / Supervisor": ["School Assistant Admin"],
             "Framework for Effective Teaching": ["Learner"],
             "Non-instructional": ["Learner"],
-            "NPS non-Principal Leadership Framework": ["School Assistant Admin"],
             "NPS Principal Framework": ["School Admin"],
             "Nurse Framework": ["Learner"],
             "Paraprofessional": ["Learner"],
@@ -83,20 +82,32 @@ class ImportUtils:
             "Student Support Framework": ["Learner"],
             "Unaffiliated": ["Learner"]
         }
-
         # if the role to convert isn't a string we default them to teacher
         if not isinstance(role_to_convert, str):
             role_to_convert = "#N/A"
-        whetstone_role_names = role_map[role_to_convert]
+        # Get the role based on the passed in user framework
+        if role_to_convert in role_map:
+            whetstone_role_names = role_map[role_to_convert]
+
+        # Check NPS framework user's User Type for one of the Department Chair job titles
+        if role_to_convert == "NPS non-Principal Leadership Framework":
+            if user_type and user_type['name'] in ImportUtils.department_chair_job_titles:
+                whetstone_role_names.append("Department Chair")
+            else:
+                whetstone_role_names.append("School Assistant Admin")
+
+        # Check Director / Supervisor roles and assign either school admin or school assistant admin
+        if role_to_convert == "Director / Supervisor":
+            if user_type and user_type['name'] in ImportUtils.nps_director_job_titles:
+                whetstone_role_names.append("School Admin")
+            else:
+                whetstone_role_names.append("School Assistant Admin")
+
         if not whetstone_role_names:
             whetstone_role_names = ["Learner"]
 
         for whetstone_role_name in whetstone_role_names:
             whetstone_roles.append(ImportUtils.find_object(whetstone_role_name, 'name', roles))
-
-        # Check User Type for one of the Department Chair job titles, if it exists the user get department chair role
-        if user_type and user_type['name'] in ImportUtils.department_chair_job_titles:
-            whetstone_roles.append(ImportUtils.find_object("Department Chair", 'name', roles))
 
         if len(whetstone_roles):
             whetstone_roles = list(map(lambda role: role['_id'], whetstone_roles))

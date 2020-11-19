@@ -4,7 +4,7 @@ import math
 from datetime import datetime
 
 warning_messages = []
-log = open(f'user-import-{datetime.now()}.log', 'w')
+log = open(f'logs/user-import-{datetime.now()}.log', 'w')
 
 def archive_users(users_to_import, existing_users):
     print('Status: Archiving users missing from import')
@@ -61,10 +61,10 @@ def update_users(users_to_import, existing_users, schools, user_types, user_tags
         user_tag_3 = ImportUtils.find_object(user_to_import['Framework'], 'name', user_tags['userTag3s'])
         user_tag_4 = ImportUtils.find_object(user_to_import['Dept Descr'], 'name', user_tags['userTag4s'])
         coach = None
-        if 'Coach' in user_to_import and user_to_import['Coach'] and not math.isnan(user_to_import['Coach']):
-            existing_coach = ImportUtils.find_object(str(int(user_to_import['Coach'])), 'internalId', existing_users)
-            if existing_coach:
-                coach = existing_coach['_id']
+        # if 'Coach' in user_to_import and user_to_import['Coach'] and not math.isnan(user_to_import['Coach']):
+        #     existing_coach = ImportUtils.find_object(str(int(user_to_import['Coach'])), 'internalId', existing_users)
+        #     if existing_coach:
+        #         coach = existing_coach['_id']
 
         # build user object
         user_data = {
