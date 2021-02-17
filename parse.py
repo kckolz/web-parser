@@ -115,19 +115,20 @@ try:
     parsed_json_page = parse_json_page(json_site)
     save_json(parsed_json_page, 'json-page-versions.json')
 
+    parsed_xml = []
     for xml_site in xml_sites:
-        parsed_xml = []
         parsed_xml_page = parse_xml_page(xml_site)
         for xml in parsed_xml_page:
             parsed_xml.append(xml)
-        save_json(parsed_xml, 'xml-page-versions.json')
+    save_json(parsed_xml, 'xml-page-versions.json')
 
+    parsed_html = []
     for html_site in html_sites:
-        parsed_html = []
         parsed_html_page = parse_html_page(html_site)
         for html in parsed_html_page:
             parsed_html.append(html)
-        save_json(parsed_html, 'html-page-versions.json')
+    print(parsed_html)
+    save_json(parsed_html, 'html-page-versions.json')
 
 
 except Exception as e:
