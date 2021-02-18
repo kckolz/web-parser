@@ -1,3 +1,5 @@
+import re
+
 import requests
 import json
 from bs4 import BeautifulSoup
@@ -34,8 +36,8 @@ html_sites = [
         "targets": [
             {
                 "version": {
-                    "type": "class",
-                    "target": "css-truncate-target"
+                    "type": "href",
+                    "target": "https://github.com/corretto/corretto-11/releases/tag"
                 },
                 "date": {
                     "type": "tag",
@@ -83,6 +85,8 @@ def find_versions_html(soup, targets):
             version = soup.find(id=version_description["target"]).text
         elif version_description["type"] == "tag":
             version = soup.find(version_description["target"]).string
+        elif version_description["type"] == "href":
+            version = soup.find(href=re.compile(version_description["target"])).text
 
         date_description = target["date"]
         if date_description["type"] == "class":
@@ -91,6 +95,8 @@ def find_versions_html(soup, targets):
             date = soup.find(id=date_description["target"]).text
         elif date_description["type"] == "tag":
             date = soup.find(date_description["target"]).string
+        elif date_description["type"] == "href":
+            date = soup.find(href=re.compile(date_description["target"])).text
 
         versions.append({
             "name": version,
